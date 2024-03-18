@@ -93,7 +93,7 @@
 </head>
 <body>
     <div class="container">
-        <h1 style="text-align: center; color: #fff;">ChatBot</h1>
+        <h1 style="text-align: center; color: #fff;">Grumpy</h1>
         <div id="chatbox-container">
             <div id="chatbox"></div>
         </div>
@@ -107,7 +107,12 @@
 
     <script>
         function sendMessage() {
+
             var userMessage = document.getElementById('user_message').value;
+                if (!userMessage) {
+                    return; // No file selected
+                }
+            
             document.getElementById('chatbox').innerHTML += '<div class="message-container"><div class="user-message"><span class="message-content">' + userMessage + '</span></div></div>';
             document.getElementById('user_message').value = '';
 
@@ -141,20 +146,103 @@
         });
 
         document.getElementById('upload-image').addEventListener('change', function() {
+            debugger;
+            var file = this.files[0]; // Get the first selected file
+                if (!file) {
+                    return; // No file selected
+                }
+            
+            document.getElementById('user_message').value = '';
             var file = this.files[0];
             if (file) {
                 var reader = new FileReader();
-                reader.onload = function(e) {
-                    var img = document.createElement('img');
-                    img.src = e.target.result;
-                    img.style.maxWidth = '200px';
-                    img.style.marginTop = '10px';
-                    document.getElementById('chatbox').appendChild(img);
-                    document.getElementById('chatbox').scrollTop = document.getElementById('chatbox').scrollHeight;
+                reader.onload = function(event) {
+                    var imageUrl = event.target.result; // Get the data URL of the uploaded image
+                    var imageElement = '<div class="message-container"><div class="user-message"><span class="message-content"><img src="' + imageUrl + '" alt="Uploaded Image" style="max-width: 200px; margin-top: 10px;"/></span></div></div>'; // Create an HTML 
+                    document.getElementById('chatbox').innerHTML += imageElement;
+                    document.getElementById('chatbox').scrollTop = document.getElementById('chatbox').scrollHeight; // Scroll to the bottom of the chatbox
                 };
+                            
                 reader.readAsDataURL(file);
+                try{
+                 uploadImage(file);
+                }catch(error){
+                    console.log("error mssg" + error);
+                }
             }
         });
+
+
+
+        function uploadImage(file) {
+            var fileInput = file;
+            debugger;
+            var file = fileInput;
+            if (!file) {
+                alert('Please select an image');
+                return;
+            }
+
+            var formData = new FormData();
+            formData.append('image', file);
+
+            fetch('/upload_image', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                var botResponse = data.bot_response;
+
+                if (botResponse.toLowerCase().includes('<>unknown<>')) {
+                    var name = prompt("We don't recognize this person, Please provide a name for this person:").toLowerCase();
+                    if (name && name != 'no' && !name.includes('forget')  && !name.includes("i don't know") && !name.includes('idk')) {
+                        // Send a request to save the image with the provided name
+                        saveToDatabase(name, fileInput);
+               
+                    }else{
+                    document.getElementById('chatbox').innerHTML += '<div class="message-container"><div class="bot-message"><span class="message-content"> Aborting Saving to DB ...</span></div></div>';
+                document.getElementById('chatbox').scrollTop = document.getElementById('chatbox').scrollHeight;
+                    }
+
+                }else{
+                document.getElementById('chatbox').innerHTML += '<div class="message-container"><div class="bot-message"><span class="message-content">' + botResponse + '</span></div></div>';
+                document.getElementById('chatbox').scrollTop = document.getElementById('chatbox').scrollHeight;
+                   } 
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+
+      function saveToDatabase(name, file) {
+            var formData = new FormData();
+            formData.append('image', file);
+            fetch('/save_to_db', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    response: 'yes',
+                    name: name,
+                    file: formData
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.bot_response);
+                 document.getElementById('chatbox').innerHTML += '<div class="message-container"><div class="bot-message"><span class="message-content">' + botResponse + '</span></div></div>';
+                document.getElementById('chatbox').scrollTop = document.getElementById('chatbox').scrollHeight;
+            })
+            .catch(error => {
+                 document.getElementById('chatbox').innerHTML += '<div class="message-container"><div class="bot-message"><span class="message-content">' + error + '</span></div></div>';
+                document.getElementById('chatbox').scrollTop = document.getElementById('chatbox').scrollHeight;
+            });
+        }
+
+       
     </script>
 </body>
 </html>
